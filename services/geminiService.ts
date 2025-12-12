@@ -1,7 +1,17 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { TaskCategory, Task } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to get a fresh client instance
+const getAiClient = () => {
+  // Ensure the API key is available
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.error("API_KEY is missing from process.env");
+    // We let the SDK throw its own error or handle it if needed, 
+    // but returning a client with empty key might fail gracefully depending on usage.
+  }
+  return new GoogleGenAI({ apiKey: apiKey });
+};
 
 // Schema for generating structured task data
 const taskSchema: Schema = {
@@ -149,6 +159,7 @@ const meetingSummarySchema: Schema = {
 
 export const generateTaskFromInput = async (userInput: string) => {
   try {
+    const ai = getAiClient();
     const model = 'gemini-2.5-flash';
     const response = await ai.models.generateContent({
       model,
@@ -192,6 +203,7 @@ const formatTaskHistoryForPrompt = (history: Task[]): string => {
 
 export const estimateTaskEffort = async (title: string, description: string, pastTasks: Task[] = []) => {
   try {
+    const ai = getAiClient();
     const model = 'gemini-2.5-flash';
     const trainingContext = formatTaskHistoryForPrompt(pastTasks);
     
@@ -231,6 +243,7 @@ export const estimateTaskEffort = async (title: string, description: string, pas
 
 export const generateTeamInsights = async (tasks: Task[]) => {
     try {
+        const ai = getAiClient();
         const model = 'gemini-2.5-flash';
         
         // Summarize data for the prompt to save tokens
@@ -268,6 +281,7 @@ export const generateTeamInsights = async (tasks: Task[]) => {
 
 export const generatePersonalCoaching = async (developerName: string, tasks: Task[]) => {
     try {
+        const ai = getAiClient();
         const model = 'gemini-2.5-flash';
         const summary = tasks.map(t => 
             `- Task: ${t.title} [${t.status}] (${t.estimatedHours}h) Priority: ${t.priority}`
@@ -304,6 +318,7 @@ export const generatePersonalCoaching = async (developerName: string, tasks: Tas
 
 export const generateStandup = async (tasks: Task[]) => {
     try {
+        const ai = getAiClient();
         const model = 'gemini-2.5-flash';
         const summary = tasks.map(t => 
             `- Task: ${t.title} [Status: ${t.status}] (${t.category})`
@@ -341,6 +356,7 @@ export const generateStandup = async (tasks: Task[]) => {
 
 export const generateTechPlan = async (title: string, description: string) => {
     try {
+        const ai = getAiClient();
         const model = 'gemini-2.5-flash';
         const response = await ai.models.generateContent({
             model,
@@ -374,6 +390,7 @@ export const generateTechPlan = async (title: string, description: string) => {
 
 export const chatWithTechLead = async (history: {role: string, parts: {text: string}[]}[], message: string) => {
     try {
+        const ai = getAiClient();
         const chat = ai.chats.create({
             model: 'gemini-2.5-flash',
             history: history,
@@ -398,6 +415,7 @@ export const summarizeMeeting = async (transcript: {role: string, text: string}[
 
     // 2. AI Generation
     try {
+        const ai = getAiClient();
         const model = 'gemini-2.5-flash';
         const transcriptText = transcript.map(t => `${t.role}: ${t.text}`).join('\n');
         

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
-import { Video, Mic, MicOff, PhoneOff, ListVideo, Sparkles, Loader2, CheckSquare, AlertCircle, Users, Radio, LogOut, Power, Clock, Briefcase, Copy, Check } from 'lucide-react';
+import { Video, Mic, MicOff, PhoneOff, ListVideo, Sparkles, Loader2, CheckSquare, AlertCircle, Users, Radio, LogOut, Power, Clock, Briefcase, Copy, Check, Info } from 'lucide-react';
 import { summarizeMeeting } from '../services/geminiService';
 import { MeetingSession, LiveMeeting } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -65,6 +65,7 @@ const MeetingRoom: React.FC<MeetingRoomProps> = ({
         const key = process.env.API_KEY;
         if (!key) {
              setError("System Error: API Key missing in environment variables.");
+             return;
         }
         aiRef.current = new GoogleGenAI({ apiKey: key });
 
@@ -480,14 +481,16 @@ const MeetingRoom: React.FC<MeetingRoomProps> = ({
                                 <span className="text-red-400 font-bold font-mono text-sm uppercase">LIVE: {liveMeeting.topic}</span>
                              </div>
                              {isHost && (
-                                 <button 
-                                    onClick={copyUplinkCode}
-                                    className="flex items-center gap-2 bg-zinc-800 border border-zinc-600 hover:border-white px-3 py-2 text-xs font-bold uppercase transition-all"
-                                    title="Copy Uplink Code for remote employees"
-                                 >
-                                     {isCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-                                     {isCopied ? 'Copied' : 'Copy Uplink'}
-                                 </button>
+                                 <div className="flex flex-col items-end gap-1">
+                                     <button 
+                                        onClick={copyUplinkCode}
+                                        className="flex items-center gap-2 bg-zinc-800 border border-zinc-600 hover:border-white px-3 py-2 text-xs font-bold uppercase transition-all"
+                                     >
+                                         {isCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                                         {isCopied ? 'Copied' : 'Copy Uplink'}
+                                     </button>
+                                     <span className="text-[9px] text-zinc-500 font-mono">For cross-browser joining</span>
+                                 </div>
                              )}
                          </div>
                     )}
