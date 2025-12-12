@@ -131,7 +131,7 @@ const INITIAL_TASKS: Task[] = [
 ];
 
 const App: React.FC = () => {
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading, login } = useAuth();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'board' | 'team' | 'meet' | 'chat'>('dashboard');
   
   // Project State
@@ -162,19 +162,50 @@ const App: React.FC = () => {
     }
   }, [user]);
 
-  // Poll for Active Meeting (Simulating backend via LocalStorage)
+  // Enhanced Syncing: BroadcastChannel + Polling + Storage Event
   useEffect(() => {
-    const checkMeeting = () => {
+    const channel = new BroadcastChannel('devflow_ops_sync');
+    
+    const syncState = () => {
         const stored = localStorage.getItem('devflow_live_meeting');
         if (stored) {
-            setLiveMeeting(JSON.parse(stored));
+            try {
+                const parsed = JSON.parse(stored);
+                setLiveMeeting(parsed);
+            } catch (e) {
+                console.error("Failed to parse meeting state", e);
+            }
         } else {
             setLiveMeeting(null);
         }
     };
-    checkMeeting(); // Initial check
-    const interval = setInterval(checkMeeting, 1000); // Poll every 1s for better responsiveness
-    return () => clearInterval(interval);
+
+    // 1. Initial Check
+    syncState();
+
+    // 2. Poll for robustness (every 2s)
+    const interval = setInterval(syncState, 2000);
+
+    // 3. Storage Event Listener (Cross-tab same browser)
+    const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'devflow_live_meeting') {
+            syncState();
+        }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // 4. Broadcast Channel Listener (Immediate cross-tab)
+    channel.onmessage = (event) => {
+        if (event.data === 'MEETING_UPDATE') {
+            syncState();
+        }
+    };
+
+    return () => {
+        clearInterval(interval);
+        window.removeEventListener('storage', handleStorageChange);
+        channel.close();
+    };
   }, []);
 
   // Meeting Handlers
@@ -191,6 +222,10 @@ const App: React.FC = () => {
       };
       setLiveMeeting(meeting);
       localStorage.setItem('devflow_live_meeting', JSON.stringify(meeting));
+      
+      const channel = new BroadcastChannel('devflow_ops_sync');
+      channel.postMessage('MEETING_UPDATE');
+      channel.close();
   };
 
   const handleJoinLiveMeeting = () => {
@@ -200,12 +235,38 @@ const App: React.FC = () => {
           updatedMeeting.participants.push(user.name);
           setLiveMeeting(updatedMeeting);
           localStorage.setItem('devflow_live_meeting', JSON.stringify(updatedMeeting));
+          
+          const channel = new BroadcastChannel('devflow_ops_sync');
+          channel.postMessage('MEETING_UPDATE');
+          channel.close();
       }
   };
 
   const handleStopLiveMeeting = () => {
       setLiveMeeting(null);
       localStorage.removeItem('devflow_live_meeting');
+      
+      const channel = new BroadcastChannel('devflow_ops_sync');
+      channel.postMessage('MEETING_UPDATE');
+      channel.close();
+  };
+
+  // Manual Uplink Join (For Cross-Browser Demo)
+  const handleManualJoin = (uplinkCode: string) => {
+      try {
+          const decoded = atob(uplinkCode);
+          const meetingData = JSON.parse(decoded);
+          if (meetingData && meetingData.isActive) {
+              setLiveMeeting(meetingData);
+              localStorage.setItem('devflow_live_meeting', JSON.stringify(meetingData));
+              setActiveTab('meet');
+              return true;
+          }
+      } catch (e) {
+          console.error("Invalid Uplink Code");
+          return false;
+      }
+      return false;
   };
 
   // Project Handlers
@@ -307,7 +368,7 @@ const App: React.FC = () => {
   }
 
   if (!user) {
-    return <Login />;
+    return <Login onManualJoin={handleManualJoin} />;
   }
 
   return (

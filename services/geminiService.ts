@@ -1,9 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { TaskCategory, Task } from "../types";
 
-// Safely access the API key to prevent "Cannot read properties of undefined" errors
-const apiKey = import.meta.env?.VITE_API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Schema for generating structured task data
 const taskSchema: Schema = {

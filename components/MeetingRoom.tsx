@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
-import { Video, Mic, MicOff, PhoneOff, ListVideo, Sparkles, Loader2, CheckSquare, AlertCircle, Users, Radio, LogOut, Power, Clock, Briefcase } from 'lucide-react';
+import { Video, Mic, MicOff, PhoneOff, ListVideo, Sparkles, Loader2, CheckSquare, AlertCircle, Users, Radio, LogOut, Power, Clock, Briefcase, Copy, Check } from 'lucide-react';
 import { summarizeMeeting } from '../services/geminiService';
 import { MeetingSession, LiveMeeting } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,6 +37,7 @@ const MeetingRoom: React.FC<MeetingRoomProps> = ({
 
     // Admin Controls State
     const [meetingTopic, setMeetingTopic] = useState('');
+    const [isCopied, setIsCopied] = useState(false);
 
     // Media Refs
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -61,7 +62,7 @@ const MeetingRoom: React.FC<MeetingRoomProps> = ({
 
     useEffect(() => {
         // Init AI client only once on mount
-        const key = import.meta.env?.VITE_API_KEY || '';
+        const key = process.env.API_KEY;
         if (!key) {
              setError("System Error: API Key missing in environment variables.");
         }
@@ -353,6 +354,14 @@ const MeetingRoom: React.FC<MeetingRoomProps> = ({
         }
     }
 
+    const copyUplinkCode = () => {
+        if (!liveMeeting) return;
+        const code = btoa(JSON.stringify(liveMeeting));
+        navigator.clipboard.writeText(code);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+    }
+
     function createBlob(data: Float32Array): Blob {
         const l = data.length;
         const int16 = new Int16Array(l);
@@ -465,9 +474,21 @@ const MeetingRoom: React.FC<MeetingRoomProps> = ({
                         <p className="text-zinc-500 font-mono text-sm">Collaborative workspace for Admin & Staff.</p>
                     </div>
                     {liveMeeting && liveMeeting.isActive && (
-                         <div className="flex items-center gap-3 bg-red-950/30 border border-red-900 px-4 py-2 rounded-sm animate-pulse">
-                            <Radio size={16} className="text-red-500" />
-                            <span className="text-red-400 font-bold font-mono text-sm uppercase">LIVE: {liveMeeting.topic}</span>
+                         <div className="flex items-center gap-3">
+                             <div className="flex items-center gap-3 bg-red-950/30 border border-red-900 px-4 py-2 rounded-sm animate-pulse">
+                                <Radio size={16} className="text-red-500" />
+                                <span className="text-red-400 font-bold font-mono text-sm uppercase">LIVE: {liveMeeting.topic}</span>
+                             </div>
+                             {isHost && (
+                                 <button 
+                                    onClick={copyUplinkCode}
+                                    className="flex items-center gap-2 bg-zinc-800 border border-zinc-600 hover:border-white px-3 py-2 text-xs font-bold uppercase transition-all"
+                                    title="Copy Uplink Code for remote employees"
+                                 >
+                                     {isCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                                     {isCopied ? 'Copied' : 'Copy Uplink'}
+                                 </button>
+                             )}
                          </div>
                     )}
                 </div>
